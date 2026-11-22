@@ -6,7 +6,7 @@ on:
     branches: [main]
     paths:
       - 'Jarvis-master.zip'
-      - '.github/workflows/build-jarvis.yml'
+      - '.github/workflows/build-Jarvis.yml'
 
 permissions:
   contents: read

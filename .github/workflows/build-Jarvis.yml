@@ -34,53 +34,59 @@ jobs:
           channel: stable
           cache: true
 
+      
       - name: Extract source
         run: |
           unzip -q Jarvis-master.zip -d source
-          test -f source/Jarvis-master/pubspec.yaml
-          test -f source/Jarvis-master/android/settings.gradle
-          test -f source/Jarvis-master/android/gradle/wrapper/gradle-wrapper.properties
+          PROJECT="source/Jarvis-master"
+          test -f "$PROJECT/pubspec.yaml"
+          test -f "$PROJECT/android/gradle/wrapper/gradle-wrapper.properties"
+          find "$PROJECT/android" -maxdepth 1 -name 'settings.gradle*' -print
+          test -f "$PROJECT/android/settings.gradle" || test -f "$PROJECT/android/settings.gradle.kts"
 
       - name: Upgrade Android build versions
         working-directory: source/Jarvis-master
+        shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
 
-          # Upgrade Gradle wrapper
-          p = Path("android/gradle/wrapper/gradle-wrapper.properties")
-          s = p.read_text()
-          s, n = re.subn(
+          # Update Gradle wrapper
+          wrapper = Path("android/gradle/wrapper/gradle-wrapper.properties")
+          content = wrapper.read_text()
+          content, count = re.subn(
               r'gradle-[0-9.]+-(?:all|bin)\.zip',
               'gradle-9.3.1-all.zip',
-              s
+              content
           )
-          if n == 0:
-              raise SystemExit("Gradle distribution URL not found")
-          p.write_text(s)
+          if count == 0:
+              raise SystemExit("Gradle wrapper URL not found")
+          wrapper.write_text(content)
 
-          # Upgrade Android Gradle Plugin
-          p = Path("android/settings.gradle")
-          s = p.read_text()
-          s, n = re.subn(
-              r'(com\.android\.application["\']?\s+version\s+["\'])[^"\']+',
-              r'\g<1>9.1.1',
-              s
-          )
-          if n == 0:
+          # Detect either Groovy or Kotlin settings file
+          candidates = [
+              Path("android/settings.gradle.kts"),
+              Path("android/settings.gradle")
+          ]
+          settings = next((p for p in candidates if p.is_file()), None)
+          if settings is None:
+              raise SystemExit("Android settings.gradle file not found")
+
+          content = settings.read_text()
+          pattern = r'(id\s*\(?\s*["\']com\.android\.application["\']\s*\)?\s+version\s+["\'])[^"\']+'
+          content, count = re.subn(pattern, r'\g<1>9.1.1', content)
+
+          if count == 0:
               raise SystemExit(
-                  "AGP version not found in android/settings.gradle; "
-                  "please inspect the plugins block."
+                  f"Could not find Android Gradle Plugin version in {settings}"
               )
-          p.write_text(s)
 
-          print("Updated Gradle wrapper:")
-          print(Path("android/gradle/wrapper/gradle-wrapper.properties").read_text())
-          print("Updated Android settings:")
-          print(p.read_text())
+          settings.write_text(content)
+          print(f"Updated Android settings: {settings}")
+          print("Gradle wrapper and Android Gradle Plugin updated.")
           PY
-
+          
       - name: Install Flutter dependencies
         working-directory: source/Jarvis-master
         run: flutter pub get

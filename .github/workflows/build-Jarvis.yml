@@ -7,7 +7,7 @@ on:
     branches:
       - main
     paths:
-      - 'Jarvis-master.zip'
+      - 'Jarvis-master-security-reviewed.zip'
       - '.github/workflows/build-Jarvis.yml'
 
 permissions:
@@ -37,7 +37,7 @@ jobs:
       
       - name: Extract source
         run: |
-          unzip -q Jarvis-master.zip -d source
+          unzip -q Jarvis-master-security-reviewed.zip -d source
           PROJECT="source/Jarvis-master"
           test -f "$PROJECT/pubspec.yaml"
           test -f "$PROJECT/android/gradle/wrapper/gradle-wrapper.properties"
